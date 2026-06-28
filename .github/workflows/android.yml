@@ -14,42 +14,42 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      # ── 1. Checkout ────────────────────────────────────────────────────────
+      # ── 1. Скачиваем репозиторий ───────────────────────────────────────────
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # ── 2. Java 17 ─────────────────────────────────────────────────────────
+      # ── 2. Настраиваем Java 17 (нужна для новых версий Android) ────────────
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
 
-      # ── 3. Полная зачистка и принудительное обновление Wrapper ──────────────
+      # ── 3. Полная зачистка и принудительное создание Wrapper 8.7 ──────────
       - name: Force Fix Gradle Wrapper
         run: |
-          # Уничтожаем старые файлы
+          # Полностью удаляем старые поломанные файлы
           rm -f gradlew gradlew.bat
           rm -rf gradle/wrapper
           
-          # Устанавливаем чистый Gradle в саму систему Ubuntu
+          # Устанавливаем чистый Gradle в систему Ubuntu
           sudo apt-get update
           sudo apt-get install -y gradle
           
-          # Генерируем абсолютно новые официальные файлы
-          gradle wrapper --gradle-version 8.0 --distribution-type bin
+          # Создаем с нуля официальный Gradle Wrapper версии 8.7 (требуется для AGP 8.5.2)
+          gradle wrapper --gradle-version 8.7 --distribution-type bin
           
-          # Проверяем, что внутри gradlew нет мусора "-Xmx64m"
+          # Очищаем возможный мусор в тексте скрипта
           sed -i 's/"-Xmx64m"//g' gradlew || true
           
-          # Выдаем права
+          # Даем права на запуск
           chmod +x gradlew
 
-      # ── 4. Сборка с очисткой кэша (чтобы старый баг не вернулся) ───────────
+      # ── 4. Сборка проекта ──────────────────────────────────────────────────
       - name: Build debug APK
         run: ./gradlew clean assembleDebug --stacktrace --no-daemon
 
-      # ── 5. Сохранение APK ──────────────────────────────────────────────────
+      # ── 5. Сохранение готового APK в артефакты ─────────────────────────────
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
@@ -57,7 +57,7 @@ jobs:
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 7
 
-      # ── 6. Проверка результата ─────────────────────────────────────────────
+      # ── 6. Проверка размера файла ──────────────────────────────────────────
       - name: Show APK size
         run: |
           APK="app/build/outputs/apk/debug/app-debug.apk"
