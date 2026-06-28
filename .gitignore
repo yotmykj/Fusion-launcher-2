@@ -1,0 +1,21 @@
+# Android / Gradle
+.gradle/
+.idea/
+local.properties
+*.iml
+build/
+app/build/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Signing keystores — never commit these
+*.jks
+*.keystore
+
+# macOS
+.DS_Store
+
+# IntelliJ
+*.iws
+out/
