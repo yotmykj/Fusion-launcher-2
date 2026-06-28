@@ -1,4 +1,4 @@
-name: Build Debug APK
+ name: Build Debug APK
 
 on:
   push:
@@ -25,8 +25,8 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      # ── 3. АВТО-ФИКС ВСЕХ ОШИБОК ПРОЕКТА (Один шаг для всего) ──────────────
-      - name: Force Fix Android Project Configurations
+      # ── 3. УЛЬТРА-ФИКС ПРОЕКТА (Жесткая перезапись кривых настроек) ───────
+      - name: Super Force Fix Configurations
         run: |
           # 1. Стираем битый Gradle Wrapper от Claude
           rm -f gradlew gradlew.bat
@@ -39,13 +39,21 @@ jobs:
           gradle wrapper --gradle-version 8.7 --distribution-type bin
           chmod +x gradlew
           
-          # 4. АВТО-ИСПРАВЛЕНИЕ: Включаем поддержку AndroidX в gradle.properties
+          # 4. Гарантированно включаем AndroidX в gradle.properties
           echo "android.useAndroidX=true" >> gradle.properties
           echo "android.enableJetifier=true" >> gradle.properties
           
-          # 5. АВТО-ИСПРАВЛЕНИЕ: Меняем сломанную альфа-версию tv-material на рабочую 1.0.0
-          # Этот скрипт сам найдет строку "1.0.0-alpha11" в файлах версий и заменит её
-          find . -name "*.toml" -o -name "*.kts" | xargs sed -i 's/1.0.0-alpha11/1.0.0/g' || true
+          # 5. ЖЕСТКАЯ ЗАМЕНА ЛЮБЫХ ТВ-АЛЬФА ВЕРСИЙ В .toml КАТАЛОГЕ
+          # Этот скрипт жестко меняет любые упоминания alpha версий для androidx-tv на стабильную 1.0.0
+          if [ -f "gradle/libs.versions.toml" ]; then
+            sed -i 's/1.0.0-alpha11/1.0.0/g' gradle/libs.versions.toml
+            sed -i 's/1.0.0-alpha01/1.0.0/g' gradle/libs.versions.toml
+            sed -i 's/1.0.0-rc01/1.0.0/g' gradle/libs.versions.toml
+            sed -i 's/1.0.0-rc02/1.0.0/g' gradle/libs.versions.toml
+          fi
+          
+          # На случай если Claude написал версию в самом build.gradle.kts
+          find . -name "*.kts" | xargs sed -i 's/1.0.0-alpha11/1.0.0/g' || true
 
       # ── 4. Сборка проекта ──────────────────────────────────────────────────
       - name: Build debug APK
