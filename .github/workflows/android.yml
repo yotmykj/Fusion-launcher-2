@@ -18,38 +18,40 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # ── 2. Настраиваем Java 17 (нужна для новых версий Android) ────────────
+      # ── 2. Настраиваем Java 17 ─────────────────────────────────────────────
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
 
-      # ── 3. Полная зачистка и принудительное создание Wrapper 8.7 ──────────
-      - name: Force Fix Gradle Wrapper
+      # ── 3. АВТО-ФИКС ВСЕХ ОШИБОК ПРОЕКТА (Один шаг для всего) ──────────────
+      - name: Force Fix Android Project Configurations
         run: |
-          # Полностью удаляем старые поломанные файлы
+          # 1. Стираем битый Gradle Wrapper от Claude
           rm -f gradlew gradlew.bat
           rm -rf gradle/wrapper
           
-          # Устанавливаем чистый Gradle в систему Ubuntu
-          sudo apt-get update
-          sudo apt-get install -y gradle
+          # 2. Ставим чистый Gradle в систему Ubuntu
+          sudo apt-get update && sudo apt-get install -y gradle
           
-          # Создаем с нуля официальный Gradle Wrapper версии 8.7 (требуется для AGP 8.5.2)
+          # 3. Генерируем правильный Wrapper версии 8.7
           gradle wrapper --gradle-version 8.7 --distribution-type bin
-          
-          # Очищаем возможный мусор в тексте скрипта
-          sed -i 's/"-Xmx64m"//g' gradlew || true
-          
-          # Даем права на запуск
           chmod +x gradlew
+          
+          # 4. АВТО-ИСПРАВЛЕНИЕ: Включаем поддержку AndroidX в gradle.properties
+          echo "android.useAndroidX=true" >> gradle.properties
+          echo "android.enableJetifier=true" >> gradle.properties
+          
+          # 5. АВТО-ИСПРАВЛЕНИЕ: Меняем сломанную альфа-версию tv-material на рабочую 1.0.0
+          # Этот скрипт сам найдет строку "1.0.0-alpha11" в файлах версий и заменит её
+          find . -name "*.toml" -o -name "*.kts" | xargs sed -i 's/1.0.0-alpha11/1.0.0/g' || true
 
       # ── 4. Сборка проекта ──────────────────────────────────────────────────
       - name: Build debug APK
         run: ./gradlew clean assembleDebug --stacktrace --no-daemon
 
-      # ── 5. Сохранение готового APK в артефакты ─────────────────────────────
+      # ── 5. Сохранение готового APK ─────────────────────────────────────────
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
@@ -63,8 +65,8 @@ jobs:
           APK="app/build/outputs/apk/debug/app-debug.apk"
           if [ -f "$APK" ]; then
             SIZE=$(du -sh "$APK" | cut -f1)
-            echo "✅ APK built successfully — size: $SIZE"
+            echo "✅ APK успешно собран! Размер файла: $SIZE"
           else
-            echo "❌ APK not found"
+            echo "❌ APK не найден"
             exit 1
           fi
