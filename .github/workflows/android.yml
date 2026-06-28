@@ -25,8 +25,8 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      # ── 3. УЛЬТРА-ФИКС ПРОЕКТА (Жесткая перезапись кривых настроек) ───────
-      - name: Super Force Fix Configurations
+      # ── 3. УЛЬТРА-ФИКС КОНФИГУРАЦИЙ ПРОЕКТА ────────────────────────────────
+      - name: Total Configuration Override
         run: |
           # 1. Стираем битый Gradle Wrapper от Claude
           rm -f gradlew gradlew.bat
@@ -40,20 +40,26 @@ jobs:
           chmod +x gradlew
           
           # 4. Гарантированно включаем AndroidX в gradle.properties
-          echo "android.useAndroidX=true" >> gradle.properties
+          echo "android.useAndroidX=true" > gradle.properties
           echo "android.enableJetifier=true" >> gradle.properties
           
-          # 5. ЖЕСТКАЯ ЗАМЕНА ЛЮБЫХ ТВ-АЛЬФА ВЕРСИЙ В .toml КАТАЛОГЕ
-          # Этот скрипт жестко меняет любые упоминания alpha версий для androidx-tv на стабильную 1.0.0
-          if [ -f "gradle/libs.versions.toml" ]; then
-            sed -i 's/1.0.0-alpha11/1.0.0/g' gradle/libs.versions.toml
-            sed -i 's/1.0.0-alpha01/1.0.0/g' gradle/libs.versions.toml
-            sed -i 's/1.0.0-rc01/1.0.0/g' gradle/libs.versions.toml
-            sed -i 's/1.0.0-rc02/1.0.0/g' gradle/libs.versions.toml
-          fi
+          # 5. ГЛОБАЛЬНЫЙ ПЕРЕХВАТ ЗАВИСИМОСТЕЙ (Самый надежный фикс)
+          # Этот скрипт дописывает в корень проекта правило: если Gradle ищет любую alpha-версию 
+          # библиотек tv-material или tv-foundation, он ПРИНУДИТЕЛЬНО скачает стабильную версию 1.0.0.
+          # Это сработает, даже если версии запрятаны глубоко в TOML каталогах.
+          cat << 'EOF' >> build.gradle.kts
           
-          # На случай если Claude написал версию в самом build.gradle.kts
-          find . -name "*.kts" | xargs sed -i 's/1.0.0-alpha11/1.0.0/g' || true
+          subprojects {
+              configurations.all {
+                  resolutionStrategy.eachDependency {
+                      if (requested.group == "androidx.tv") {
+                          useVersion("1.0.0")
+                          because("Force update buggy alpha versions from Claude to stable release")
+                      }
+                  }
+              }
+          }
+          EOF
 
       # ── 4. Сборка проекта ──────────────────────────────────────────────────
       - name: Build debug APK
